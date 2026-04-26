@@ -626,7 +626,7 @@ async function loadManifest() {
 //  LOAD CSV PREDICTIONS
 // ═══════════════════════════════════════════════════════
 async function loadCSV(sport, date) {
-  const url = `${REPO_BASE}/data/${sport}_predictions_${date}.csv`;
+  const url = `${REPO_BASE}/data/${sport}/${sport}_predictions_${date}.csv`;
   try {
     const res = await fetch(url, { cache: 'no-cache' });
     if (!res.ok) throw new Error();
@@ -729,7 +729,7 @@ document.addEventListener('keydown', e => { if (e.key==='Escape') closeLightbox(
 // ═══════════════════════════════════════════════════════
 //  NBA BACKTEST
 // ═══════════════════════════════════════════════════════
-const NBA_CSV_URL = `${REPO_BASE}/data/nba_backtest_2025-26.csv`;
+const NBA_CSV_URL = `${REPO_BASE}/data/nba/nba_backtest_2025-26.csv`;
 let nbaAllPicks = [];
 let nbaLoaded = false;
 
