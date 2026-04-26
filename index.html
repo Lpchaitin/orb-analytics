@@ -683,9 +683,14 @@ async function loadAllMLB() {
 
 function renderMLBHistory() {
   const selectedDate = document.getElementById('mlb-date-select').value;
-  const rows = selectedDate === 'ALL'
+  const allDateRows = selectedDate === 'ALL'
     ? mlbAllRows
     : mlbAllRows.filter(r => r._date === selectedDate);
+
+  // Exclude pending picks from display
+  const rows = allDateRows.filter(r =>
+    r['pick_made?'] !== '1' || r['pick_correct?'] === '1' || r['pick_correct?'] === '0'
+  ).filter(r => !(r['pick_made?'] === '1' && r['pick_correct?'] === ''));
 
   // Stats
   const picks   = rows.filter(r => r['pick_made?'] === '1');
@@ -713,8 +718,9 @@ function renderMLBHistory() {
   document.getElementById('mlb-filter-count').textContent =
     selectedDate === 'ALL' ? `Showing all ${rows.length} games` : `${rows.length} games on ${fmtDate(selectedDate)}`;
 
-  // Table rows
-  document.getElementById('mlb-body').innerHTML = rows.map(r => {
+  // Table rows — exclude pending picks
+  const displayRows = rows.filter(r => r['pick_made?'] === '1');
+  document.getElementById('mlb-body').innerHTML = displayRows.map(r => {
     const home = r['home team'] || '—', away = r['away team'] || '—';
     const pick = r['pick?'] || '—';
     const pickHome = r['pick_home?'] === '1';
@@ -929,7 +935,7 @@ function renderNBATable() {
       <td><span class="matchup">${matchup}</span></td>
       <td><span class="pick-cell">${r['pick_team']}</span></td>
       <td><span style="font-size:0.72rem;font-weight:600;color:${sideColor}">${r['pick_side']}</span></td>
-      <td style="color:var(--muted)">${r['spread']}</td>
+      <td style="color:var(--muted)">${r['spread'] || '—'}</td>
       <td><span class="odds-pill ${isFav ? 'fav' : ''}">${fmtOdds(odds)}</span></td>
       <td style="color:var(--muted);font-size:0.76rem">${edge}</td>
       <td>${badge}</td>
