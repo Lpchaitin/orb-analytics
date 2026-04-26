@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orb Analytics Ltd. — Daily Sports Predictions</title>
+  <meta name="description" content="Machine learning sports predictions for MLB, NBA & NFL. Data-driven picks updated daily by Orb Analytics Ltd." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ── TOKENS ── */
+    :root {
+      --purple-darkest: #2B0030;
+      --purple-deep:    #5A0066;
+      --purple-mid:     #7A0090;
+      --purple-bright:  #A100C8;
+      --purple-neon:    #D11CFF;
+      --white:          #FFFFFF;
+      --off-white:      #F0E6F5;
+      --muted:          #9B7AA8;
+      --bg:             #0D000F;
+      --card-bg:        rgba(90,0,102,0.12);
+      --card-border:    rgba(209,28,255,0.18);
+      --win-color:      #39FF7A;
+      --loss-color:     #FF3A5E;
+      --novig-blue:     #1A8CFF;
+
+      /* Sport accent colours */
+      --mlb-color:  #D11CFF;
+      --nba-color:  #FF6B2B;
+      --nfl-color:  #4FC3F7;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--off-white);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* background glow mesh */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 60% 50% at 10% 0%,   rgba(161,0,200,0.28) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 90% 100%,  rgba(90,0,102,0.35)  0%, transparent 60%),
+        radial-gradient(ellipse 40% 60% at 50% 50%,   rgba(43,0,48,0.6)    0%, transparent 70%);
+    }
+    /* grid overlay */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(209,28,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(209,28,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* ── LAYOUT ── */
+    .z1 { position: relative; z-index: 1; }
+    .max-w { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky; top: 0; z-index: 200;
+      background: rgba(13,0,15,0.85);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--card-border);
+    }
+    .header-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 13px 24px; max-width: 1200px; margin: 0 auto;
+    }
+    .logo-group { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    .logo-group img { width: 40px; height: 40px; border-radius: 50%; box-shadow: 0 0 18px rgba(209,28,255,0.55); }
+    .logo-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; color: var(--white); line-height: 1.1; }
+    .logo-name span { display: block; font-size: 0.6rem; font-weight: 400; color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase; font-family: 'DM Mono', monospace; margin-top: 1px; }
+
+    nav { display: flex; align-items: center; gap: 4px; }
+    nav a { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; color: var(--muted); text-decoration: none; transition: color 0.2s, background 0.2s; }
+    nav a:hover { color: var(--purple-neon); background: rgba(209,28,255,0.1); }
+    nav a svg { width: 17px; height: 17px; fill: currentColor; }
+
+    /* ── HERO ── */
+    .hero { padding: 52px 24px 36px; max-width: 1200px; margin: 0 auto; }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(209,28,255,0.1); border: 1px solid rgba(209,28,255,0.28);
+      border-radius: 100px; padding: 4px 14px; margin-bottom: 18px;
+      font-size: 0.68rem; color: var(--purple-neon); letter-spacing: 0.16em; text-transform: uppercase;
+    }
+    .hero-eyebrow::before { content:''; width:6px; height:6px; background:var(--purple-neon); border-radius:50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.65)} }
+
+    .hero h1 { font-family:'Syne',sans-serif; font-size:clamp(2rem,5vw,3.6rem); font-weight:800; line-height:1.06; color:var(--white); margin-bottom:14px; }
+    .hero h1 em { font-style:normal; background:linear-gradient(90deg,var(--purple-bright),var(--purple-neon)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .hero-sub { color:var(--muted); font-size:0.88rem; max-width:500px; line-height:1.75; }
+
+    /* ── NOVIG BANNER ── */
+    .novig-wrap { position:relative; z-index:1; max-width:1200px; margin:0 auto 44px; padding:0 24px; }
+    .novig-banner {
+      background: linear-gradient(135deg,rgba(0,20,50,0.92) 0%,rgba(0,40,90,0.82) 100%);
+      border: 1px solid rgba(26,140,255,0.32); border-radius: 16px;
+      padding: 22px 28px; display: flex; align-items: center; justify-content: space-between;
+      gap: 20px; flex-wrap: wrap; overflow: hidden; position: relative;
+    }
+    .novig-banner::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse 60% 80% at 90% 50%,rgba(26,140,255,0.13) 0%,transparent 70%); pointer-events:none; }
+    .novig-left { display:flex; align-items:center; gap:14px; }
+    .novig-icon { width:44px; height:44px; background:var(--novig-blue); border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:0.65rem; color:#fff; letter-spacing:0.05em; flex-shrink:0; }
+    .novig-text strong { display:block; font-family:'Syne',sans-serif; font-weight:700; font-size:0.95rem; color:var(--white); margin-bottom:3px; }
+    .novig-text p { font-size:0.76rem; color:#7BBFFF; line-height:1.4; }
+    .novig-right { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+    .novig-code { background:rgba(0,0,0,0.5); border:1px solid rgba(26,140,255,0.4); border-radius:10px; padding:9px 18px; text-align:center; }
+    .novig-code small { display:block; font-size:0.58rem; color:#7BBFFF; letter-spacing:0.16em; text-transform:uppercase; margin-bottom:2px; }
+    .novig-code strong { font-family:'Syne',sans-serif; font-size:1.35rem; font-weight:800; color:#FFD700; letter-spacing:0.08em; }
+    .novig-cta { background:var(--novig-blue); color:#fff; text-decoration:none; padding:11px 22px; border-radius:10px; font-family:'Syne',sans-serif; font-weight:700; font-size:0.83rem; letter-spacing:0.04em; transition:transform 0.2s,box-shadow 0.2s; white-space:nowrap; }
+    .novig-cta:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(26,140,255,0.4); }
+
+    /* ── SPORT FILTER BAR ── */
+    .sport-bar-wrap { position:relative; z-index:1; border-bottom:1px solid var(--card-border); background:rgba(13,0,15,0.5); }
+    .sport-bar { display:flex; align-items:center; gap:8px; max-width:1200px; margin:0 auto; padding:12px 24px; overflow-x:auto; }
+
+    .sport-btn {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 8px 18px; cursor: pointer;
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.78rem;
+      letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+      transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
+    }
+    .sport-btn:hover { color: var(--off-white); border-color: rgba(255,255,255,0.2); }
+
+    .sport-btn .dot { width:8px; height:8px; border-radius:50%; background:currentColor; opacity:0.4; transition:opacity 0.2s; }
+    .sport-btn .season-tag { font-size:0.58rem; font-weight:500; letter-spacing:0.1em; font-family:'DM Mono',monospace; padding:2px 6px; border-radius:4px; background:rgba(255,255,255,0.06); color:var(--muted); }
+
+    /* active states per sport */
+    .sport-btn[data-sport="mlb"].active { color:var(--mlb-color); border-color:rgba(209,28,255,0.45); background:rgba(209,28,255,0.08); }
+    .sport-btn[data-sport="mlb"].active .dot { opacity:1; background:var(--mlb-color); box-shadow:0 0 6px var(--mlb-color); }
+    .sport-btn[data-sport="nba"].active { color:var(--nba-color); border-color:rgba(255,107,43,0.45); background:rgba(255,107,43,0.08); }
+    .sport-btn[data-sport="nba"].active .dot { opacity:1; background:var(--nba-color); box-shadow:0 0 6px var(--nba-color); }
+    .sport-btn[data-sport="nfl"].active { color:var(--nfl-color); border-color:rgba(79,195,247,0.45); background:rgba(79,195,247,0.08); }
+    .sport-btn[data-sport="nfl"].active .dot { opacity:1; background:var(--nfl-color); box-shadow:0 0 6px var(--nfl-color); }
+
+    /* ── CONTENT TABS (Picks / Graphics) ── */
+    .content-bar-wrap { position:relative; z-index:1; border-bottom:1px solid var(--card-border); background:rgba(13,0,15,0.35); }
+    .content-bar { display:flex; max-width:1200px; margin:0 auto; padding:0 24px; overflow-x:auto; }
+    .content-tab {
+      background:none; border:none; cursor:pointer;
+      font-family:'Syne',sans-serif; font-weight:700; font-size:0.78rem;
+      letter-spacing:0.08em; text-transform:uppercase;
+      color:var(--muted); padding:12px 18px;
+      border-bottom:2px solid transparent; margin-bottom:-1px;
+      transition:color 0.2s, border-color 0.2s; white-space:nowrap;
+    }
+    .content-tab.active { color:var(--purple-neon); border-bottom-color:var(--purple-neon); }
+    .content-tab:hover:not(.active) { color:var(--off-white); }
+
+    /* ── MAIN SECTION ── */
+    .main-section { position:relative; z-index:1; max-width:1200px; margin:0 auto; padding:0 24px 64px; }
+
+    .content-panel { display:none; }
+    .content-panel.active { display:block; }
+
+    .panel-header { display:flex; align-items:flex-end; justify-content:space-between; margin:36px 0 22px; border-bottom:1px solid var(--card-border); padding-bottom:14px; gap:12px; flex-wrap:wrap; }
+    .panel-title { font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:800; color:var(--white); }
+    .panel-title .sport-accent-mlb { color:var(--mlb-color); }
+    .panel-title .sport-accent-nba { color:var(--nba-color); }
+    .panel-title .sport-accent-nfl { color:var(--nfl-color); }
+    .panel-meta { font-size:0.7rem; color:var(--muted); letter-spacing:0.08em; text-transform:uppercase; }
+
+    /* ── OFF-SEASON STATE ── */
+    .offseason-box {
+      border:1px solid var(--card-border); border-radius:16px;
+      background:var(--card-bg); padding:56px 32px; text-align:center;
+      margin-top:24px;
+    }
+    .offseason-icon { font-size:2.8rem; margin-bottom:16px; opacity:0.6; }
+    .offseason-title { font-family:'Syne',sans-serif; font-weight:800; font-size:1.1rem; color:var(--white); margin-bottom:10px; }
+    .offseason-sub { font-size:0.82rem; color:var(--muted); line-height:1.7; max-width:360px; margin:0 auto; }
+
+    /* ── STATS ROW ── */
+    .stats-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:28px; }
+    .stat-pill { background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px; padding:15px 22px; flex:1; min-width:120px; }
+    .stat-pill .lbl { font-size:0.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.12em; margin-bottom:6px; }
+    .stat-pill .val { font-family:'Syne',sans-serif; font-size:1.55rem; font-weight:800; color:var(--white); }
+    .stat-pill .val.win  { color:var(--win-color); }
+    .stat-pill .val.loss { color:var(--loss-color); }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x:auto; border-radius:14px; border:1px solid var(--card-border); background:rgba(43,0,48,0.3); }
+    table { width:100%; border-collapse:collapse; font-size:0.81rem; }
+    thead th { background:rgba(90,0,102,0.5); color:var(--muted); font-size:0.63rem; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; padding:11px 15px; text-align:left; white-space:nowrap; border-bottom:1px solid var(--card-border); }
+    tbody tr { border-bottom:1px solid rgba(209,28,255,0.06); transition:background 0.15s; }
+    tbody tr:last-child { border-bottom:none; }
+    tbody tr:hover { background:rgba(161,0,200,0.08); }
+    tbody td { padding:12px 15px; white-space:nowrap; }
+
+    .matchup { font-family:'Syne',sans-serif; font-weight:600; font-size:0.84rem; color:var(--white); }
+    .pick-cell { font-family:'Syne',sans-serif; font-weight:700; color:var(--purple-neon); }
+    .prob-bar { display:flex; align-items:center; gap:8px; }
+    .prob-track { width:56px; height:3px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden; }
+    .prob-fill { height:100%; background:linear-gradient(90deg,var(--purple-bright),var(--purple-neon)); border-radius:2px; }
+
+    .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:6px; font-size:0.68rem; font-weight:600; letter-spacing:0.04em; font-family:'Syne',sans-serif; }
+    .badge-win     { background:rgba(57,255,122,0.12); color:var(--win-color);   border:1px solid rgba(57,255,122,0.28); }
+    .badge-loss    { background:rgba(255,58,94,0.12);  color:var(--loss-color);  border:1px solid rgba(255,58,94,0.28); }
+    .badge-pending { background:rgba(209,28,255,0.1);  color:var(--purple-neon); border:1px solid rgba(209,28,255,0.28); }
+
+    .odds-pill { background:rgba(255,255,255,0.05); border-radius:6px; padding:2px 8px; font-size:0.74rem; color:var(--off-white); border:1px solid rgba(255,255,255,0.08); }
+    .odds-pill.fav { color:var(--purple-neon); border-color:rgba(209,28,255,0.25); }
+
+    /* ── GRAPHICS GALLERY ── */
+    .gallery-legend { font-size:0.8rem; color:var(--muted); line-height:1.75; margin-bottom:24px; }
+    .gallery-legend strong { color:var(--purple-neon); }
+    .gallery-legend .g-win  { color:var(--win-color); }
+    .gallery-legend .g-loss { color:var(--loss-color); }
+
+    .gallery-section-label {
+      display:flex; align-items:center; gap:12px; margin:32px 0 14px;
+      font-family:'Syne',sans-serif; font-weight:700; font-size:0.72rem;
+      letter-spacing:0.14em; text-transform:uppercase; color:var(--muted);
+    }
+    .gallery-section-label:first-of-type { margin-top:0; }
+    .gallery-section-label::after { content:''; flex:1; height:1px; background:var(--card-border); }
+    .g-badge { border-radius:5px; padding:3px 9px; font-size:0.68rem; }
+    .g-badge-picks   { background:rgba(209,28,255,0.1);  color:var(--purple-neon); border:1px solid rgba(209,28,255,0.25); }
+    .g-badge-results { background:rgba(57,255,122,0.08); color:var(--win-color);   border:1px solid rgba(57,255,122,0.25); }
+
+    .graphics-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(255px,1fr)); gap:14px; }
+    .graphic-card { border-radius:13px; overflow:hidden; border:1px solid var(--card-border); background:rgba(43,0,48,0.4); transition:transform 0.2s,box-shadow 0.2s,border-color 0.2s; cursor:pointer; }
+    .graphic-card:hover { transform:translateY(-4px); box-shadow:0 12px 36px rgba(209,28,255,0.22); border-color:rgba(209,28,255,0.4); }
+    .graphic-card img { width:100%; display:block; }
+    .graphic-card-label { padding:9px 13px; font-family:'Syne',sans-serif; font-size:0.7rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); background:rgba(20,0,25,0.85); text-align:center; }
+
+    .no-graphics { padding:40px; text-align:center; color:var(--muted); font-size:0.82rem; border:1px solid var(--card-border); border-radius:14px; background:var(--card-bg); }
+
+    /* ── LIGHTBOX ── */
+    .lightbox { display:none; position:fixed; inset:0; z-index:999; background:rgba(0,0,0,0.9); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:24px; }
+    .lightbox.open { display:flex; }
+    .lightbox img { max-width:min(480px,88vw); max-height:88vh; border-radius:16px; box-shadow:0 0 80px rgba(209,28,255,0.3); animation:lbIn 0.2s ease; }
+    @keyframes lbIn { from{opacity:0;transform:scale(0.92)} to{opacity:1;transform:scale(1)} }
+    .lb-close { position:absolute; top:20px; right:22px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:1.3rem; width:42px; height:42px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s; }
+    .lb-close:hover { background:rgba(209,28,255,0.35); }
+
+    /* ── LOADING / ERROR ── */
+    .state-box { padding:56px; text-align:center; color:var(--muted); font-size:0.83rem; }
+    .spinner { width:30px; height:30px; border:2px solid rgba(209,28,255,0.2); border-top-color:var(--purple-neon); border-radius:50%; animation:spin 0.75s linear infinite; margin:0 auto 14px; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* ── FOOTER ── */
+    footer { border-top:1px solid var(--card-border); padding:30px 24px; text-align:center; color:var(--muted); font-size:0.7rem; letter-spacing:0.04em; position:relative; z-index:1; }
+    .footer-logo { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:12px; }
+    .footer-logo img { width:26px; height:26px; border-radius:50%; opacity:0.6; }
+    .footer-logo span { font-family:'Syne',sans-serif; font-weight:700; font-size:0.88rem; color:var(--white); opacity:0.45; }
+    footer p { line-height:1.9; }
+    footer a { color:var(--muted); text-decoration:none; }
+    footer a:hover { color:var(--purple-neon); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width:640px) {
+      .hero { padding:36px 24px 28px; }
+      .novig-banner { padding:18px; }
+      .novig-right { width:100%; justify-content:space-between; }
+      thead th, tbody td { padding:9px 11px; }
+      .graphics-grid { grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="header-inner">
+    <a href="#" class="logo-group">
+      <img src="orb_analytics_limited_logo.png" alt="Orb Analytics" />
+      <div class="logo-name">Orb Analytics<span>Ltd. · Sports Intelligence</span></div>
+    </a>
+    <nav>
+      <a href="https://x.com/OrbPicks" target="_blank" rel="noopener" title="X / Twitter">
+        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.743l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      </a>
+      <a href="https://www.instagram.com/orb.analytics/" target="_blank" rel="noopener" title="Instagram">
+        <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+      </a>
+      <a href="https://www.tiktok.com/@orb.analytics" target="_blank" rel="noopener" title="TikTok">
+        <svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.53V6.77a4.85 4.85 0 0 1-1.01-.08z"/></svg>
+      </a>
+      <a href="https://www.youtube.com/@OrbAnalyticsLimited" target="_blank" rel="noopener" title="YouTube">
+        <svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+      </a>
+      <a href="https://orbanalytics.substack.com/" target="_blank" rel="noopener" title="Substack">
+        <svg viewBox="0 0 24 24"><path d="M22.539 8.242H1.46V5.406h21.08v2.836zM1.46 10.812V24L12 18.11 22.54 24V10.812H1.46zM22.54 0H1.46v2.836h21.08V0z"/></svg>
+      </a>
+    </nav>
+  </div>
+</header>
+
+<!-- ══ HERO ══ -->
+<div class="hero z1">
+  <div class="hero-eyebrow">ML-Powered Predictions</div>
+  <h1>Data-Driven<br /><em>Sports Intelligence</em></h1>
+  <p class="hero-sub">Machine learning predictions updated daily. No hype, no gut picks — just model-backed analysis for every game.</p>
+</div>
+
+<!-- ══ NOVIG BANNER ══ -->
+<div class="novig-wrap z1">
+  <div class="novig-banner">
+    <div class="novig-left">
+      <div class="novig-icon">NOVIG</div>
+      <div class="novig-text">
+        <strong>Sponsored by Novig</strong>
+        <p>Where America Trades on Sports · Spend $5, Get $50 in Novig Coins</p>
+      </div>
+    </div>
+    <div class="novig-right">
+      <div class="novig-code"><small>Use Code</small><strong>ORB</strong></div>
+      <a href="https://www.novig.us/" target="_blank" rel="noopener" class="novig-cta">Trade on Novig →</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SPORT FILTER BAR ══ -->
+<div class="sport-bar-wrap">
+  <div class="sport-bar">
+    <button class="sport-btn active" data-sport="mlb">
+      <span class="dot"></span> MLB <span class="season-tag">In Season</span>
+    </button>
+    <button class="sport-btn" data-sport="nba">
+      <span class="dot"></span> NBA <span class="season-tag">Off Season</span>
+    </button>
+    <button class="sport-btn" data-sport="nfl">
+      <span class="dot"></span> NFL <span class="season-tag">Off Season</span>
+    </button>
+  </div>
+</div>
+
+<!-- ══ CONTENT TAB BAR ══ -->
+<div class="content-bar-wrap">
+  <div class="content-bar">
+    <button class="content-tab active" data-tab="picks">Today's Picks</button>
+    <button class="content-tab" data-tab="graphics">Match Graphics</button>
+  </div>
+</div>
+
+<!-- ══ MAIN CONTENT ══ -->
+<div class="main-section">
+
+  <!-- PICKS PANEL -->
+  <div class="content-panel active" id="panel-picks">
+
+    <!-- MLB PICKS -->
+    <div id="sport-picks-mlb">
+      <div class="panel-header">
+        <div class="panel-title">MLB <span class="sport-accent-mlb">Picks</span></div>
+        <div class="panel-meta" id="mlb-date">Loading…</div>
+      </div>
+      <div class="stats-row" id="mlb-stats"></div>
+      <div class="table-wrap">
+        <div class="state-box" id="mlb-loading"><div class="spinner"></div>Fetching predictions…</div>
+        <table id="mlb-table" style="display:none">
+          <thead>
+            <tr><th>Matchup</th><th>Pick</th><th>Model Prob</th><th>Pick Odds</th><th>O/U Line</th><th>Status</th></tr>
+          </thead>
+          <tbody id="mlb-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- NBA OFF-SEASON -->
+    <div id="sport-picks-nba" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title">NBA <span class="sport-accent-nba">Picks</span></div>
+      </div>
+      <div class="offseason-box">
+        <div class="offseason-icon">🏀</div>
+        <div class="offseason-title">NBA Off-Season</div>
+        <p class="offseason-sub">NBA predictions will be available once the season begins. Follow us on socials to get notified when picks drop.</p>
+      </div>
+    </div>
+
+    <!-- NFL OFF-SEASON -->
+    <div id="sport-picks-nfl" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title">NFL <span class="sport-accent-nfl">Picks</span></div>
+      </div>
+      <div class="offseason-box">
+        <div class="offseason-icon">🏈</div>
+        <div class="offseason-title">NFL Off-Season</div>
+        <p class="offseason-sub">NFL predictions will be available once the season begins. Follow us on socials to get notified when picks drop.</p>
+      </div>
+    </div>
+
+  </div><!-- /panel-picks -->
+
+  <!-- GRAPHICS PANEL -->
+  <div class="content-panel" id="panel-graphics">
+
+    <!-- MLB GRAPHICS -->
+    <div id="sport-graphics-mlb">
+      <div class="panel-header">
+        <div class="panel-title">MLB <span class="sport-accent-mlb">Graphics</span></div>
+        <div class="panel-meta">Today's picks &amp; yesterday's results</div>
+      </div>
+      <p class="gallery-legend">
+        <strong>Purple border</strong> = our model's pick ·
+        <span class="g-win">Green border</span> = winning pick ·
+        <span class="g-loss">Red border</span> = losing pick.
+        Click any card to expand.
+      </p>
+      <div class="gallery-section-label">
+        <span id="lbl-today-mlb">Today</span>
+        <span class="g-badge g-badge-picks">Today's Picks</span>
+      </div>
+      <div class="graphics-grid" id="grid-mlb-today"></div>
+      <div class="gallery-section-label" style="margin-top:36px">
+        <span id="lbl-yesterday-mlb">Yesterday</span>
+        <span class="g-badge g-badge-results">Results</span>
+      </div>
+      <div class="graphics-grid" id="grid-mlb-yesterday"></div>
+    </div>
+
+    <!-- NBA GRAPHICS OFF-SEASON -->
+    <div id="sport-graphics-nba" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title">NBA <span class="sport-accent-nba">Graphics</span></div>
+      </div>
+      <div class="offseason-box">
+        <div class="offseason-icon">🏀</div>
+        <div class="offseason-title">NBA Off-Season</div>
+        <p class="offseason-sub">Matchup graphics will appear here once the NBA season is underway.</p>
+      </div>
+    </div>
+
+    <!-- NFL GRAPHICS OFF-SEASON -->
+    <div id="sport-graphics-nfl" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title">NFL <span class="sport-accent-nfl">Graphics</span></div>
+      </div>
+      <div class="offseason-box">
+        <div class="offseason-icon">🏈</div>
+        <div class="offseason-title">NFL Off-Season</div>
+        <p class="offseason-sub">Matchup graphics will appear here once the NFL season is underway.</p>
+      </div>
+    </div>
+
+  </div><!-- /panel-graphics -->
+
+</div><!-- /main-section -->
+
+<!-- ══ LIGHTBOX ══ -->
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" id="lb-close">✕</button>
+  <img id="lb-img" src="" alt="" />
+</div>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="footer-logo">
+    <img src="orb_analytics_limited_logo.png" alt="Orb" />
+    <span>Orb Analytics Ltd.</span>
+  </div>
+  <p>
+    <a href="https://x.com/OrbPicks" target="_blank">X/Twitter</a> ·
+    <a href="https://www.instagram.com/orb.analytics/" target="_blank">Instagram</a> ·
+    <a href="https://www.tiktok.com/@orb.analytics" target="_blank">TikTok</a> ·
+    <a href="https://www.youtube.com/@OrbAnalyticsLimited" target="_blank">YouTube</a> ·
+    <a href="https://orbanalytics.substack.com/" target="_blank">Substack</a>
+  </p>
+  <p style="margin-top:11px">Predictions are for informational purposes only. Must be 21+. Please gamble responsibly.</p>
+  <p style="margin-top:5px">© 2026 Orb Analytics Ltd. All rights reserved.</p>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONFIG
+//  After pushing to GitHub Pages, update REPO_BASE to:
+//  https://raw.githubusercontent.com/Lpchaitin/orb-analytics/main
+// ═══════════════════════════════════════════════════════
+const REPO_BASE = 'https://raw.githubusercontent.com/Lpchaitin/orb-analytics/main';
+const MANIFEST_URL = `${REPO_BASE}/manifest.json`;
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let activeSport = 'mlb';
+let activeTab   = 'picks';
+let manifest    = null;
+
+// ═══════════════════════════════════════════════════════
+//  SPORT BUTTONS
+// ═══════════════════════════════════════════════════════
+document.querySelectorAll('.sport-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sport-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeSport = btn.dataset.sport;
+    showSportContent();
+  });
+});
+
+function showSportContent() {
+  ['mlb','nba','nfl'].forEach(s => {
+    const picks = document.getElementById(`sport-picks-${s}`);
+    const gfx   = document.getElementById(`sport-graphics-${s}`);
+    const show  = s === activeSport;
+    if (picks) picks.style.display = show ? 'block' : 'none';
+    if (gfx)   gfx.style.display   = show ? 'block' : 'none';
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  CONTENT TABS (Picks / Graphics)
+// ═══════════════════════════════════════════════════════
+document.querySelectorAll('.content-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.content-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    activeTab = tab.dataset.tab;
+    document.getElementById(`panel-${activeTab}`).classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(',').map(h => h.trim());
+  return lines.slice(1).map(line => {
+    const vals = line.split(',').map(v => v.trim());
+    const obj = {}; headers.forEach((h,i) => obj[h] = vals[i] ?? '');
+    return obj;
+  });
+}
+
+function fmtOdds(val) {
+  if (!val || val === '') return '—';
+  const n = parseInt(val);
+  return isNaN(n) ? val : (n > 0 ? `+${n}` : `${n}`);
+}
+
+function fmtProb(val) {
+  const n = parseFloat(val);
+  return isNaN(n) ? '—' : `${Math.round(n * 100)}%`;
+}
+
+function statusBadge(made, correct) {
+  if (made !== '1') return `<span class="badge badge-pending">⏳ Pending</span>`;
+  if (correct === '1') return `<span class="badge badge-win">✓ Win</span>`;
+  return `<span class="badge badge-loss">✗ Loss</span>`;
+}
+
+function fmtDate(str) {
+  if (!str) return '';
+  const d = new Date(str + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOAD MANIFEST
+// ═══════════════════════════════════════════════════════
+async function loadManifest() {
+  try {
+    const res = await fetch(MANIFEST_URL, { cache: 'no-cache' });
+    if (!res.ok) throw new Error();
+    manifest = await res.json();
+
+    // Set date labels
+    document.getElementById('lbl-today-mlb').textContent     = fmtDate(manifest.today)     || 'Today';
+    document.getElementById('lbl-yesterday-mlb').textContent = fmtDate(manifest.yesterday) || 'Yesterday';
+
+    // Build galleries
+    buildGallery(manifest.mlb?.graphics_today     || [], 'grid-mlb-today',     'mlb');
+    buildGallery(manifest.mlb?.graphics_yesterday || [], 'grid-mlb-yesterday', 'mlb');
+
+    // Load CSV for active sports
+    if (manifest.today) loadCSV('mlb', manifest.today);
+
+  } catch(e) {
+    document.getElementById('mlb-loading').innerHTML =
+      `<div style="color:var(--muted)">Could not load manifest. Check back later.</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOAD CSV PREDICTIONS
+// ═══════════════════════════════════════════════════════
+async function loadCSV(sport, date) {
+  const url = `${REPO_BASE}/data/${sport}_predictions_${date}.csv`;
+  try {
+    const res = await fetch(url, { cache: 'no-cache' });
+    if (!res.ok) throw new Error();
+    const rows = parseCSV(await res.text());
+    renderPicks(sport, rows, date);
+  } catch(e) {
+    document.getElementById(`${sport}-loading`).innerHTML =
+      `<div style="color:var(--muted)">No predictions found for ${date}.<br/>Check back once picks are posted.</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER PICKS TABLE
+// ═══════════════════════════════════════════════════════
+function renderPicks(sport, rows, date) {
+  document.getElementById(`${sport}-date`).textContent = `Updated ${date}`;
+
+  const picks   = rows.filter(r => r['pick_made?'] === '1');
+  const wins    = picks.filter(r => r['pick_correct?'] === '1').length;
+  const losses  = picks.filter(r => r['pick_correct?'] === '0').length;
+  const pending = rows.filter(r => r['pick_made?'] !== '1').length;
+
+  document.getElementById(`${sport}-stats`).innerHTML = `
+    <div class="stat-pill"><div class="lbl">Total Games</div><div class="val">${rows.length}</div></div>
+    <div class="stat-pill"><div class="lbl">Picks Made</div><div class="val">${picks.length}</div></div>
+    <div class="stat-pill"><div class="lbl">Today Wins</div><div class="val win">${wins}</div></div>
+    <div class="stat-pill"><div class="lbl">Today Losses</div><div class="val loss">${losses}</div></div>
+    <div class="stat-pill"><div class="lbl">Pending</div><div class="val">${pending}</div></div>`;
+
+  document.getElementById(`${sport}-body`).innerHTML = rows.map(r => {
+    const home = r['home team'] || '—', away = r['away team'] || '—';
+    const pick = r['pick?'] || '—';
+    const pickHome = r['pick_home?'] === '1';
+    const pickOdds = pickHome ? r['home odds'] : r['away odds'];
+    const prob     = pickHome ? r['xgb_home_prob'] : r['xgb_away_prob'];
+    const probPct  = Math.round(parseFloat(prob) * 100) || 0;
+    const ouLine   = r['over close'] || '—';
+    const ouStr    = ouLine !== '—'
+      ? `${ouLine} (O ${fmtOdds(r['over close odds'])} / U ${fmtOdds(r['under close odds'])})`
+      : '—';
+    const isFav = parseFloat(pickOdds) < 0;
+    return `<tr>
+      <td><span class="matchup">${away} @ ${home}</span></td>
+      <td><span class="pick-cell">${pick}</span></td>
+      <td>
+        <div class="prob-bar">
+          <div class="prob-track"><div class="prob-fill" style="width:${probPct}%"></div></div>
+          <span>${fmtProb(prob)}</span>
+        </div>
+      </td>
+      <td><span class="odds-pill ${isFav?'fav':''}">${fmtOdds(pickOdds)}</span></td>
+      <td style="color:var(--muted);font-size:0.76rem">${ouStr}</td>
+      <td>${statusBadge(r['pick_made?'], r['pick_correct?'])}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById(`${sport}-loading`).style.display = 'none';
+  document.getElementById(`${sport}-table`).style.display = 'table';
+}
+
+// ═══════════════════════════════════════════════════════
+//  BUILD GRAPHICS GALLERY
+// ═══════════════════════════════════════════════════════
+function filenameToLabel(fn) {
+  return fn.replace(/^\d{8}_/,'').replace('.png','').replace(/_/g,' ').toUpperCase();
+}
+
+function buildGallery(files, containerId, sport) {
+  const grid = document.getElementById(containerId);
+  if (!grid) return;
+  if (!files.length) {
+    grid.innerHTML = '<div class="no-graphics">No graphics available yet.</div>';
+    return;
+  }
+  grid.innerHTML = files.map(f => `
+    <div class="graphic-card" data-src="${REPO_BASE}/graphics/${sport}/${f}">
+      <img src="${REPO_BASE}/graphics/${sport}/${f}" alt="${filenameToLabel(f)}" loading="lazy" />
+      <div class="graphic-card-label">${filenameToLabel(f)}</div>
+    </div>`).join('');
+  grid.querySelectorAll('.graphic-card').forEach(c =>
+    c.addEventListener('click', () => openLightbox(c.dataset.src)));
+}
+
+// ═══════════════════════════════════════════════════════
+//  LIGHTBOX
+// ═══════════════════════════════════════════════════════
+const openLightbox = src => {
+  document.getElementById('lb-img').src = src;
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+};
+const closeLightbox = () => {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+};
+document.getElementById('lb-close').addEventListener('click', closeLightbox);
+document.getElementById('lightbox').addEventListener('click', e => { if (e.target.id==='lightbox') closeLightbox(); });
+document.addEventListener('keydown', e => { if (e.key==='Escape') closeLightbox(); });
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+showSportContent();
+loadManifest();
+</script>
+</body>
+</html>
