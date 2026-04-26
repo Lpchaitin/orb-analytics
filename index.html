@@ -692,21 +692,21 @@ function renderMLBHistory() {
     r['pick_made?'] !== '1' || r['pick_correct?'] === '1' || r['pick_correct?'] === '0'
   ).filter(r => !(r['pick_made?'] === '1' && r['pick_correct?'] === ''));
 
-  // Stats
-  const picks   = rows.filter(r => r['pick_made?'] === '1');
-  const wins    = picks.filter(r => r['pick_correct?'] === '1').length;
-  const losses  = picks.filter(r => r['pick_correct?'] === '0').length;
-  const pending = rows.filter(r => r['pick_made?'] !== '1').length;
+  // Stats — only count resolved picks
+  const allPicked   = rows.filter(r => r['pick_made?'] === '1');
+  const wins    = allPicked.filter(r => r['pick_correct?'] === '1').length;
+  const losses  = allPicked.filter(r => r['pick_correct?'] === '0').length;
+  const pending = allPicked.filter(r => r['pick_correct?'] === '').length;
 
   document.getElementById('mlb-stats').innerHTML = `
     <div class="stat-pill"><div class="lbl">Games</div><div class="val">${rows.length}</div></div>
-    <div class="stat-pill"><div class="lbl">Picks Made</div><div class="val">${picks.length}</div></div>
+    <div class="stat-pill"><div class="lbl">Picks Made</div><div class="val">${allPicked.length}</div></div>
     <div class="stat-pill"><div class="lbl">Wins</div><div class="val win">${wins}</div></div>
     <div class="stat-pill"><div class="lbl">Losses</div><div class="val loss">${losses}</div></div>
     <div class="stat-pill"><div class="lbl">Pending</div><div class="val">${pending}</div></div>`;
 
   // Season aggregate (all dates)
-  const allPicks   = mlbAllRows.filter(r => r['pick_made?'] === '1');
+  const allPicks   = mlbAllRows.filter(r => r['pick_made?'] === '1' && r['pick_correct?'] !== '');
   const allWins    = allPicks.filter(r => r['pick_correct?'] === '1').length;
   const allLosses  = allPicks.filter(r => r['pick_correct?'] === '0').length;
   const winPct = allWins + allLosses > 0 ? ((allWins / (allWins + allLosses)) * 100).toFixed(1) : '—';
@@ -718,8 +718,8 @@ function renderMLBHistory() {
   document.getElementById('mlb-filter-count').textContent =
     selectedDate === 'ALL' ? `Showing all ${rows.length} games` : `${rows.length} games on ${fmtDate(selectedDate)}`;
 
-  // Table rows — exclude pending picks
-  const displayRows = rows.filter(r => r['pick_made?'] === '1');
+  // Table rows — only show resolved picks (wins and losses, not pending)
+  const displayRows = rows.filter(r => r['pick_made?'] === '1' && r['pick_correct?'] !== '');
   document.getElementById('mlb-body').innerHTML = displayRows.map(r => {
     const home = r['home team'] || '—', away = r['away team'] || '—';
     const pick = r['pick?'] || '—';
