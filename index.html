@@ -610,12 +610,8 @@ function fmtDate(str) {
 // ═══════════════════════════════════════════════════════
 //  LOAD MANIFEST
 // ═══════════════════════════════════════════════════════
-// Known MLB dates in the repo — add new dates here each day
-const MLB_DATES = [
-  '2026-04-17','2026-04-18','2026-04-19','2026-04-20','2026-04-21',
-  '2026-04-22','2026-04-23','2026-04-24','2026-04-25','2026-04-26'
-];
-
+// MLB dates are driven by manifest.json — no manual updates needed
+let MLB_DATES = []; // populated from manifest.mlb.dates
 let mlbAllRows = []; // all rows across all dates
 
 async function loadManifest() {
@@ -632,7 +628,8 @@ async function loadManifest() {
     buildGallery(manifest.mlb?.graphics_today     || [], 'grid-mlb-today',     'mlb');
     buildGallery(manifest.mlb?.graphics_yesterday || [], 'grid-mlb-yesterday', 'mlb');
 
-    // Load ALL MLB CSVs
+    // Set dates from manifest then load all MLB CSVs
+    MLB_DATES = manifest.mlb?.dates || [];
     loadAllMLB();
 
   } catch(e) {
@@ -642,6 +639,11 @@ async function loadManifest() {
 }
 
 async function loadAllMLB() {
+  if (!MLB_DATES.length) {
+    document.getElementById('mlb-loading').innerHTML =
+      '<div style="color:var(--muted)">No MLB dates found in manifest.</div>';
+    return;
+  }
   // Fetch all dates in parallel
   const results = await Promise.allSettled(
     MLB_DATES.map(async date => {
