@@ -343,8 +343,8 @@
 <!-- ══ CONTENT TAB BAR ══ -->
 <div class="content-bar-wrap">
   <div class="content-bar">
-    <button class="content-tab active" data-tab="picks">Today's Picks</button>
-    <button class="content-tab" data-tab="graphics">Match Graphics</button>
+    <button class="content-tab active" data-tab="graphics">Today's Picks</button>
+    <button class="content-tab" data-tab="picks">History</button>
   </div>
 </div>
 
@@ -352,12 +352,12 @@
 <div class="main-section">
 
   <!-- PICKS PANEL -->
-  <div class="content-panel active" id="panel-picks">
+  <div class="content-panel" id="panel-picks">
 
     <!-- MLB PICKS -->
     <div id="sport-picks-mlb">
       <div class="panel-header">
-        <div class="panel-title">MLB <span class="sport-accent-mlb">Picks</span></div>
+        <div class="panel-title">MLB <span class="sport-accent-mlb">History</span></div>
         <div class="panel-meta" id="mlb-date">Loading…</div>
       </div>
       <div class="stats-row" id="mlb-stats"></div>
@@ -375,7 +375,7 @@
     <!-- NBA OFF-SEASON -->
     <div id="sport-picks-nba" style="display:none">
       <div class="panel-header">
-        <div class="panel-title">NBA <span class="sport-accent-nba">Picks</span></div>
+        <div class="panel-title">NBA <span class="sport-accent-nba">History</span></div>
       </div>
       <div class="offseason-box">
         <div class="offseason-icon">🏀</div>
@@ -387,7 +387,7 @@
     <!-- NFL OFF-SEASON -->
     <div id="sport-picks-nfl" style="display:none">
       <div class="panel-header">
-        <div class="panel-title">NFL <span class="sport-accent-nfl">Picks</span></div>
+        <div class="panel-title">NFL <span class="sport-accent-nfl">History</span></div>
       </div>
       <div class="offseason-box">
         <div class="offseason-icon">🏈</div>
@@ -399,12 +399,12 @@
   </div><!-- /panel-picks -->
 
   <!-- GRAPHICS PANEL -->
-  <div class="content-panel" id="panel-graphics">
+  <div class="content-panel active" id="panel-graphics">
 
     <!-- MLB GRAPHICS -->
     <div id="sport-graphics-mlb">
       <div class="panel-header">
-        <div class="panel-title">MLB <span class="sport-accent-mlb">Graphics</span></div>
+        <div class="panel-title">MLB <span class="sport-accent-mlb">Today's Picks</span></div>
         <div class="panel-meta">Today's picks &amp; yesterday's results</div>
       </div>
       <p class="gallery-legend">
@@ -428,7 +428,7 @@
     <!-- NBA GRAPHICS OFF-SEASON -->
     <div id="sport-graphics-nba" style="display:none">
       <div class="panel-header">
-        <div class="panel-title">NBA <span class="sport-accent-nba">Graphics</span></div>
+        <div class="panel-title">NBA <span class="sport-accent-nba">Today's Picks</span></div>
       </div>
       <div class="offseason-box">
         <div class="offseason-icon">🏀</div>
@@ -440,7 +440,7 @@
     <!-- NFL GRAPHICS OFF-SEASON -->
     <div id="sport-graphics-nfl" style="display:none">
       <div class="panel-header">
-        <div class="panel-title">NFL <span class="sport-accent-nfl">Graphics</span></div>
+        <div class="panel-title">NFL <span class="sport-accent-nfl">Today's Picks</span></div>
       </div>
       <div class="offseason-box">
         <div class="offseason-icon">🏈</div>
@@ -489,7 +489,7 @@ const MANIFEST_URL = `${REPO_BASE}/manifest.json`;
 //  STATE
 // ═══════════════════════════════════════════════════════
 let activeSport = 'mlb';
-let activeTab   = 'picks';
+let activeTab   = 'graphics';
 let manifest    = null;
 
 // ═══════════════════════════════════════════════════════
