@@ -354,18 +354,29 @@
   <!-- PICKS PANEL -->
   <div class="content-panel" id="panel-picks">
 
-    <!-- MLB PICKS -->
+    <!-- MLB HISTORY -->
     <div id="sport-picks-mlb">
       <div class="panel-header">
         <div class="panel-title">MLB <span class="sport-accent-mlb">History</span></div>
         <div class="panel-meta" id="mlb-date">Loading…</div>
       </div>
-      <div class="stats-row" id="mlb-stats"></div>
+      <!-- Season aggregate stats -->
+      <div class="stats-row" id="mlb-season-stats"></div>
+      <!-- Date filter -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
+        <select id="mlb-date-select"
+          style="background:rgba(20,0,25,0.9);border:1px solid var(--card-border);border-radius:8px;padding:8px 14px;color:var(--off-white);font-family:'DM Mono',monospace;font-size:0.8rem;outline:none;cursor:pointer;">
+          <option value="ALL">All Dates</option>
+        </select>
+        <span id="mlb-filter-count" style="font-size:0.72rem;color:var(--muted)"></span>
+      </div>
+      <!-- Per-date stats -->
+      <div class="stats-row" id="mlb-stats" style="margin-bottom:20px"></div>
       <div class="table-wrap">
         <div class="state-box" id="mlb-loading"><div class="spinner"></div>Fetching predictions…</div>
         <table id="mlb-table" style="display:none">
           <thead>
-            <tr><th>Matchup</th><th>Pick</th><th>Model Prob</th><th>Pick Odds</th><th>O/U Line</th><th>Status</th></tr>
+            <tr><th>Date</th><th>Matchup</th><th>Pick</th><th>Model Prob</th><th>Pick Odds</th><th>O/U Line</th><th>Status</th></tr>
           </thead>
           <tbody id="mlb-body"></tbody>
         </table>
@@ -599,13 +610,21 @@ function fmtDate(str) {
 // ═══════════════════════════════════════════════════════
 //  LOAD MANIFEST
 // ═══════════════════════════════════════════════════════
+// Known MLB dates in the repo — add new dates here each day
+const MLB_DATES = [
+  '2026-04-17','2026-04-18','2026-04-19','2026-04-20','2026-04-21',
+  '2026-04-22','2026-04-23','2026-04-24','2026-04-25','2026-04-26'
+];
+
+let mlbAllRows = []; // all rows across all dates
+
 async function loadManifest() {
   try {
     const res = await fetch(MANIFEST_URL, { cache: 'no-cache' });
     if (!res.ok) throw new Error();
     manifest = await res.json();
 
-    // Set date labels
+    // Set date labels for graphics
     document.getElementById('lbl-today-mlb').textContent     = fmtDate(manifest.today)     || 'Today';
     document.getElementById('lbl-yesterday-mlb').textContent = fmtDate(manifest.yesterday) || 'Yesterday';
 
@@ -613,8 +632,8 @@ async function loadManifest() {
     buildGallery(manifest.mlb?.graphics_today     || [], 'grid-mlb-today',     'mlb');
     buildGallery(manifest.mlb?.graphics_yesterday || [], 'grid-mlb-yesterday', 'mlb');
 
-    // Load CSV for active sports
-    if (manifest.today) loadCSV('mlb', manifest.today);
+    // Load ALL MLB CSVs
+    loadAllMLB();
 
   } catch(e) {
     document.getElementById('mlb-loading').innerHTML =
@@ -622,21 +641,110 @@ async function loadManifest() {
   }
 }
 
+async function loadAllMLB() {
+  // Fetch all dates in parallel
+  const results = await Promise.allSettled(
+    MLB_DATES.map(async date => {
+      const url = `${REPO_BASE}/data/mlb/mlb_predictions_${date}.csv`;
+      const res = await fetch(url, { cache: 'no-cache' });
+      if (!res.ok) return [];
+      const rows = parseCSV(await res.text());
+      return rows.map(r => ({ ...r, _date: date }));
+    })
+  );
+
+  mlbAllRows = results
+    .filter(r => r.status === 'fulfilled')
+    .flatMap(r => r.value);
+
+  if (!mlbAllRows.length) {
+    document.getElementById('mlb-loading').innerHTML =
+      '<div style="color:var(--muted)">No MLB data found.</div>';
+    return;
+  }
+
+  // Populate date dropdown
+  const select = document.getElementById('mlb-date-select');
+  MLB_DATES.slice().reverse().forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = fmtDate(d);
+    select.appendChild(opt);
+  });
+  select.addEventListener('change', renderMLBHistory);
+
+  renderMLBHistory();
+  document.getElementById('mlb-loading').style.display = 'none';
+  document.getElementById('mlb-table').style.display = 'table';
+  document.getElementById('mlb-date').textContent = `${MLB_DATES[0]} – ${MLB_DATES[MLB_DATES.length-1]}`;
+}
+
+function renderMLBHistory() {
+  const selectedDate = document.getElementById('mlb-date-select').value;
+  const rows = selectedDate === 'ALL'
+    ? mlbAllRows
+    : mlbAllRows.filter(r => r._date === selectedDate);
+
+  // Stats
+  const picks   = rows.filter(r => r['pick_made?'] === '1');
+  const wins    = picks.filter(r => r['pick_correct?'] === '1').length;
+  const losses  = picks.filter(r => r['pick_correct?'] === '0').length;
+  const pending = rows.filter(r => r['pick_made?'] !== '1').length;
+
+  document.getElementById('mlb-stats').innerHTML = `
+    <div class="stat-pill"><div class="lbl">Games</div><div class="val">${rows.length}</div></div>
+    <div class="stat-pill"><div class="lbl">Picks Made</div><div class="val">${picks.length}</div></div>
+    <div class="stat-pill"><div class="lbl">Wins</div><div class="val win">${wins}</div></div>
+    <div class="stat-pill"><div class="lbl">Losses</div><div class="val loss">${losses}</div></div>
+    <div class="stat-pill"><div class="lbl">Pending</div><div class="val">${pending}</div></div>`;
+
+  // Season aggregate (all dates)
+  const allPicks   = mlbAllRows.filter(r => r['pick_made?'] === '1');
+  const allWins    = allPicks.filter(r => r['pick_correct?'] === '1').length;
+  const allLosses  = allPicks.filter(r => r['pick_correct?'] === '0').length;
+  const winPct = allWins + allLosses > 0 ? ((allWins / (allWins + allLosses)) * 100).toFixed(1) : '—';
+  document.getElementById('mlb-season-stats').innerHTML = `
+    <div class="stat-pill"><div class="lbl">Season Record</div><div class="val" style="color:var(--mlb-color)">${allWins}-${allLosses}</div></div>
+    <div class="stat-pill"><div class="lbl">Win Rate</div><div class="val ${parseFloat(winPct)>=50?'win':''}">${winPct}%</div></div>
+    <div class="stat-pill"><div class="lbl">Total Picks</div><div class="val">${allPicks.length}</div></div>`;
+
+  document.getElementById('mlb-filter-count').textContent =
+    selectedDate === 'ALL' ? `Showing all ${rows.length} games` : `${rows.length} games on ${fmtDate(selectedDate)}`;
+
+  // Table rows
+  document.getElementById('mlb-body').innerHTML = rows.map(r => {
+    const home = r['home team'] || '—', away = r['away team'] || '—';
+    const pick = r['pick?'] || '—';
+    const pickHome = r['pick_home?'] === '1';
+    const pickOdds = pickHome ? r['home odds'] : r['away odds'];
+    const prob     = pickHome ? r['xgb_home_prob'] : r['xgb_away_prob'];
+    const probPct  = Math.round(parseFloat(prob) * 100) || 0;
+    const ouLine   = r['over close'] || '—';
+    const ouStr    = ouLine !== '—'
+      ? `${ouLine} (O ${fmtOdds(r['over close odds'])} / U ${fmtOdds(r['under close odds'])})`
+      : '—';
+    const isFav = parseFloat(pickOdds) < 0;
+    return `<tr>
+      <td style="color:var(--muted);font-size:0.76rem">${r._date}</td>
+      <td><span class="matchup">${away} @ ${home}</span></td>
+      <td><span class="pick-cell">${pick}</span></td>
+      <td>
+        <div class="prob-bar">
+          <div class="prob-track"><div class="prob-fill" style="width:${probPct}%"></div></div>
+          <span>${fmtProb(prob)}</span>
+        </div>
+      </td>
+      <td><span class="odds-pill ${isFav?'fav':''}">${fmtOdds(pickOdds)}</span></td>
+      <td style="color:var(--muted);font-size:0.76rem">${ouStr}</td>
+      <td>${statusBadge(r['pick_made?'], r['pick_correct?'])}</td>
+    </tr>`;
+  }).join('');
+}
+
 // ═══════════════════════════════════════════════════════
 //  LOAD CSV PREDICTIONS
 // ═══════════════════════════════════════════════════════
-async function loadCSV(sport, date) {
-  const url = `${REPO_BASE}/data/${sport}/${sport}_predictions_${date}.csv`;
-  try {
-    const res = await fetch(url, { cache: 'no-cache' });
-    if (!res.ok) throw new Error();
-    const rows = parseCSV(await res.text());
-    renderPicks(sport, rows, date);
-  } catch(e) {
-    document.getElementById(`${sport}-loading`).innerHTML =
-      `<div style="color:var(--muted)">No predictions found for ${date}.<br/>Check back once picks are posted.</div>`;
-  }
-}
+// loadCSV replaced by loadAllMLB for MLB history
 
 // ═══════════════════════════════════════════════════════
 //  RENDER PICKS TABLE
@@ -757,7 +865,8 @@ async function loadNBABacktest() {
 
   } catch(e) {
     document.getElementById('nba-loading').innerHTML =
-      '<div style="color:var(--muted)">Could not load NBA data. Check back later.</div>';
+      `<div style="color:var(--muted)">Could not load NBA data.<br/>
+      <span style="font-size:0.7rem;opacity:0.6">Tried: ${NBA_CSV_URL}</span></div>`;
   }
 }
 
