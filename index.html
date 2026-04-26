@@ -303,7 +303,7 @@
 
 <!-- ══ HERO ══ -->
 <div class="hero z1">
-  <div class="hero-eyebrow">Machine Learning-Powered Predictions</div>
+  <div class="hero-eyebrow">ML-Powered Predictions</div>
   <h1>Data-Driven<br /><em>Sports Intelligence</em></h1>
   <p class="hero-sub">Machine learning predictions updated daily. No hype, no gut picks — just model-backed analysis for every game.</p>
 </div>
@@ -372,16 +372,49 @@
       </div>
     </div>
 
-    <!-- NBA OFF-SEASON -->
+    <!-- NBA SEASON RECAP -->
     <div id="sport-picks-nba" style="display:none">
       <div class="panel-header">
-        <div class="panel-title">NBA <span class="sport-accent-nba">History</span></div>
+        <div class="panel-title">NBA <span class="sport-accent-nba">2025-26 Season Record</span></div>
+        <div class="panel-meta">Oct 23, 2025 – Apr 8, 2026</div>
       </div>
-      <div class="offseason-box">
-        <div class="offseason-icon">🏀</div>
-        <div class="offseason-title">NBA Off-Season</div>
-        <p class="offseason-sub">NBA predictions will be available once the season begins. Follow us on socials to get notified when picks drop.</p>
+      <div class="stats-row">
+        <div class="stat-pill"><div class="lbl">Season Record</div><div class="val" style="color:var(--nba-color)">253-220</div></div>
+        <div class="stat-pill"><div class="lbl">Win Rate</div><div class="val win">53.5%</div></div>
+        <div class="stat-pill"><div class="lbl">Resolved Picks</div><div class="val">473</div></div>
+        <div class="stat-pill"><div class="lbl">Underdog Record</div><div class="val win">143-112</div></div>
+        <div class="stat-pill"><div class="lbl">Favorite Record</div><div class="val">110-108</div></div>
       </div>
+      <div class="gallery-section-label" style="margin-top:8px"><span>Monthly Breakdown</span></div>
+      <div class="stats-row" id="nba-monthly" style="margin-bottom:32px"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
+        <input id="nba-search" type="text" placeholder="Search team..."
+          style="background:rgba(255,255,255,0.05);border:1px solid var(--card-border);border-radius:8px;padding:8px 14px;color:var(--off-white);font-family:'DM Mono',monospace;font-size:0.8rem;outline:none;width:180px;">
+        <select id="nba-filter-result"
+          style="background:rgba(20,0,25,0.9);border:1px solid var(--card-border);border-radius:8px;padding:8px 14px;color:var(--off-white);font-family:'DM Mono',monospace;font-size:0.8rem;outline:none;cursor:pointer;">
+          <option value="ALL">All Results</option>
+          <option value="WIN">Wins only</option>
+          <option value="LOSS">Losses only</option>
+          <option value="PENDING">Pending</option>
+        </select>
+        <select id="nba-filter-side"
+          style="background:rgba(20,0,25,0.9);border:1px solid var(--card-border);border-radius:8px;padding:8px 14px;color:var(--off-white);font-family:'DM Mono',monospace;font-size:0.8rem;outline:none;cursor:pointer;">
+          <option value="ALL">Fav &amp; Dog</option>
+          <option value="FAVORITE">Favorites</option>
+          <option value="UNDERDOG">Underdogs</option>
+        </select>
+        <span id="nba-count" style="font-size:0.72rem;color:var(--muted)"></span>
+      </div>
+      <div class="table-wrap">
+        <div class="state-box" id="nba-loading"><div class="spinner"></div>Loading NBA season data...</div>
+        <table id="nba-table" style="display:none">
+          <thead>
+            <tr><th>Date</th><th>Matchup</th><th>Pick</th><th>Side</th><th>Spread</th><th>Odds</th><th>Edge</th><th>Result</th></tr>
+          </thead>
+          <tbody id="nba-body"></tbody>
+        </table>
+      </div>
+      <p style="margin-top:12px;font-size:0.7rem;color:var(--muted)">* 9 picks marked PENDING were not resolved in the dataset. Win rate calculated from 473 resolved picks only.</p>
     </div>
 
     <!-- NFL OFF-SEASON -->
@@ -692,6 +725,116 @@ const closeLightbox = () => {
 document.getElementById('lb-close').addEventListener('click', closeLightbox);
 document.getElementById('lightbox').addEventListener('click', e => { if (e.target.id==='lightbox') closeLightbox(); });
 document.addEventListener('keydown', e => { if (e.key==='Escape') closeLightbox(); });
+
+// ═══════════════════════════════════════════════════════
+//  NBA BACKTEST
+// ═══════════════════════════════════════════════════════
+const NBA_CSV_URL = `${REPO_BASE}/data/nba_backtest_2025-26.csv`;
+let nbaAllPicks = [];
+let nbaLoaded = false;
+
+async function loadNBABacktest() {
+  if (nbaLoaded) return;
+  try {
+    const res = await fetch(NBA_CSV_URL, { cache: 'no-cache' });
+    if (!res.ok) throw new Error();
+    const rows = parseCSV(await res.text());
+
+    // Only picks (not NO BET)
+    nbaAllPicks = rows.filter(r => r['pick_side'] !== 'NO BET');
+    nbaLoaded = true;
+
+    buildNBAMonthly();
+    renderNBATable();
+
+    document.getElementById('nba-loading').style.display = 'none';
+    document.getElementById('nba-table').style.display = 'table';
+
+    // Wire up filters
+    document.getElementById('nba-search').addEventListener('input', renderNBATable);
+    document.getElementById('nba-filter-result').addEventListener('change', renderNBATable);
+    document.getElementById('nba-filter-side').addEventListener('change', renderNBATable);
+
+  } catch(e) {
+    document.getElementById('nba-loading').innerHTML =
+      '<div style="color:var(--muted)">Could not load NBA data. Check back later.</div>';
+  }
+}
+
+function buildNBAMonthly() {
+  const monthly = {};
+  nbaAllPicks.forEach(r => {
+    if (!['WIN','LOSS'].includes(r['result'])) return;
+    const m = r['date'].slice(0, 7);
+    if (!monthly[m]) monthly[m] = { w: 0, l: 0 };
+    r['result'] === 'WIN' ? monthly[m].w++ : monthly[m].l++;
+  });
+
+  const monthNames = { '2025-10':'Oct','2025-11':'Nov','2025-12':'Dec','2026-01':'Jan','2026-02':'Feb','2026-03':'Mar','2026-04':'Apr' };
+
+  document.getElementById('nba-monthly').innerHTML = Object.keys(monthly).sort().map(m => {
+    const { w, l } = monthly[m];
+    const pct = ((w / (w + l)) * 100).toFixed(1);
+    const color = parseFloat(pct) >= 53.5 ? 'var(--win-color)' : parseFloat(pct) >= 50 ? 'var(--nba-color)' : 'var(--loss-color)';
+    return `<div class="stat-pill">
+      <div class="lbl">${monthNames[m] || m}</div>
+      <div class="val" style="font-size:1.1rem;color:${color}">${w}-${l}</div>
+      <div style="font-size:0.65rem;color:var(--muted);margin-top:3px">${pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+function renderNBATable() {
+  const search = (document.getElementById('nba-search').value || '').toLowerCase();
+  const resultFilter = document.getElementById('nba-filter-result').value;
+  const sideFilter = document.getElementById('nba-filter-side').value;
+
+  const filtered = nbaAllPicks.filter(r => {
+    if (resultFilter !== 'ALL' && r['result'] !== resultFilter) return false;
+    if (sideFilter !== 'ALL' && r['pick_side'] !== sideFilter) return false;
+    if (search && !r['pick_team'].toLowerCase().includes(search) &&
+        !r['favorite'].toLowerCase().includes(search) &&
+        !r['underdog'].toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  const resolved = filtered.filter(r => ['WIN','LOSS'].includes(r['result']));
+  const wins = resolved.filter(r => r['result'] === 'WIN').length;
+  document.getElementById('nba-count').textContent =
+    `${filtered.length} picks${resolved.length ? ` · ${wins}-${resolved.length - wins} (${(wins/resolved.length*100).toFixed(1)}%)` : ''}`;
+
+  document.getElementById('nba-body').innerHTML = filtered.map(r => {
+    const odds = r['pick_side'] === 'FAVORITE' ? r['fav_odds'] : r['dog_odds'];
+    const edge = r['edge'] ? (parseFloat(r['edge']) * 100).toFixed(1) + '%' : '—';
+    const matchup = `${r['favorite']} vs ${r['underdog']}`;
+    const sideColor = r['pick_side'] === 'UNDERDOG' ? 'var(--win-color)' : 'var(--nba-color)';
+    let badge = '';
+    if (r['result'] === 'WIN')     badge = '<span class="badge badge-win">✓ Win</span>';
+    else if (r['result'] === 'LOSS') badge = '<span class="badge badge-loss">✗ Loss</span>';
+    else                             badge = '<span class="badge badge-pending">⏳ Pending</span>';
+    const isFav = parseFloat(odds) < 0;
+    return `<tr>
+      <td style="color:var(--muted);font-size:0.76rem">${r['date']}</td>
+      <td><span class="matchup">${matchup}</span></td>
+      <td><span class="pick-cell">${r['pick_team']}</span></td>
+      <td><span style="font-size:0.72rem;font-weight:600;color:${sideColor}">${r['pick_side']}</span></td>
+      <td style="color:var(--muted)">${r['spread']}</td>
+      <td><span class="odds-pill ${isFav ? 'fav' : ''}">${fmtOdds(odds)}</span></td>
+      <td style="color:var(--muted);font-size:0.76rem">${edge}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Trigger NBA load when user clicks NBA sport button
+document.querySelectorAll('.sport-btn').forEach(btn => {
+  if (btn.dataset.sport === 'nba') {
+    btn.addEventListener('click', () => {
+      // small delay to let the panel show first
+      setTimeout(loadNBABacktest, 50);
+    });
+  }
+});
 
 // ═══════════════════════════════════════════════════════
 //  INIT
