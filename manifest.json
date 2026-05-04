@@ -1,6 +1,6 @@
 {
-  "today": "2026-05-03",
-  "yesterday": "2026-05-02",
+  "today": "2026-05-04",
+  "yesterday": "2026-05-03",
   "mlb": {
     "dates": [
   "2026-04-17",
@@ -19,13 +19,14 @@
   "2026-04-30",
   "2026-05-01",
   "2026-05-02",
-  "2026-05-03"
+  "2026-05-03",
+  "2026-05-04"
 ],
     "graphics_today": [
-  "20260503_ari_at_chc.png",
-  "20260503_bal_at_nyy.png",
-  "20260503_cin_at_pit.png",
-  "20260503_sf_at_tb.png"
+  "20260504_bal_at_nyy.png",
+  "20260504_bos_at_det.png",
+  "20260504_cin_at_chc.png",
+  "20260504_lad_at_hou.png"
 ],
     "graphics_yesterday": [
   "20260425_bos_at_bal.png",
@@ -67,7 +68,11 @@
   "20260502_cin_at_pit.png",
   "20260502_kc_at_sea.png",
   "20260502_mil_at_wsh.png",
-  "20260502_sf_at_tb.png"
+  "20260502_sf_at_tb.png",
+  "20260503_ari_at_chc.png",
+  "20260503_bal_at_nyy.png",
+  "20260503_cin_at_pit.png",
+  "20260503_sf_at_tb.png"
 ]
   },
   "nba": {
